@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>忍術施放計算器</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; text-align: center; background-color: lightslategray; }
+    label { display: block; margin-top: 10px; }
+    select { width: 200px; }
+    #result, #score { margin-top: 20px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h2>忍術施放計算器</h2>
+
+  <label for="jutsu">選擇忍術：</label>
+  <select id="jutsu"></select>
+
+  <label for="manaReduction">卷軸減免耗魔（0~3）：</label>
+  <select id="manaReduction">
+    <option value="0">0</option>
+    <option value="1">1</option>
+    <option value="2">2</option>
+    <option value="3">3</option>
+  </select>
+
+  <label for="castReduction">卷軸減免詠唱時間（0~1.5）：</label>
+  <select id="castReduction"></select>
+
+  <div id="result">請選擇忍術與減免卷軸</div>
+  <div id="score"></div>
+
+  <script>
+    // 忍術資料
+    const ninjutsuList = [
+      { name: "火遁術", mana: 6, cast_time: 3.0 },
+      { name: "雷遁術", mana: 6, cast_time: 2.0 },
+      { name: "風遁術", mana: 5, cast_time: 1.0 },
+      { name: "水遁術", mana: 7, cast_time: 2.5 },
+      { name: "土遁術", mana: 6, cast_time: 3.0 },
+      { name: "分身術", mana: 6, cast_time: 3.0 },
+      { name:"風魔手里劍", mana:5, cast_time: 1.0},
+      { name:"苦無飛鏢", mana: 3, cast_time: 0.0}
+    ];
+
+    const jutsuSelect = document.getElementById("jutsu");
+    const manaSelect = document.getElementById("manaReduction");
+    const castSelect = document.getElementById("castReduction");
+    const result = document.getElementById("result");
+    const score = document.getElementById("score");
+
+    // 產生忍術選單
+    ninjutsuList.forEach((jutsu, index) => {
+      const option = document.createElement("option");
+      option.value = index;
+      option.textContent = `${jutsu.name}`;
+      jutsuSelect.appendChild(option);
+    });
+
+    // 產生詠唱減免選單 (0~1.5 每 0.1)
+    for (let i = 0; i <= 15; i++) {
+      const value = (i / 10).toFixed(1);
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = value;
+      castSelect.appendChild(option);
+    }
+
+    // 計算所需CSPD
+    function calculateScore(originalTime, reducedTime) {
+      if (originalTime <= 0) return 0;
+      const percent = (1 - reducedTime / originalTime) * 100;
+      return percent < 50
+        ? (50 - percent) * 180 + 1000
+        : percent * 20;
+    }
+
+    // 主邏輯：更新結果與分數
+    function updateResult() {
+      const selected = ninjutsuList[jutsuSelect.value];
+      const manaReduce = parseInt(manaSelect.value);
+      const castReduce = parseFloat(castSelect.value);
+
+      const finalMana = Math.max(0, selected.mana - manaReduce);
+      const finalCast = Math.max(0, selected.cast_time - castReduce);
+      const calcScore = calculateScore(selected.cast_time, finalCast);
+
+      result.textContent = `你選擇了「${selected.name}」，實際耗魔為 ${finalMana}，瞬發最低CSPD ：${calcScore.toFixed(0)}`;
+    }
+
+    jutsuSelect.addEventListener("change", updateResult);
+    manaSelect.addEventListener("change", updateResult);
+    castSelect.addEventListener("change", updateResult);
+    updateResult();
+  </script>
+</body>
+</html>
