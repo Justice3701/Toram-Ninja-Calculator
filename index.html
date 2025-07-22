@@ -83,7 +83,7 @@
       { name: "土遁術", mana: 6, cast_time: 3.0 },     // 估計600mp，詠唱3秒
       { name: "分身術", mana: 6, cast_time: 3.0 },     // 消耗600mp，詠唱3秒
       { name: "風魔手里劍", mana: 5, cast_time: 1.0 }, // 估計500mp，詠唱1秒
-      { name: "苦無飛鏢", mana: 1, cast_time: 0.0 }    // 消耗100mp，詠唱0秒
+      { name: "苦無飛鏢", mana: 3, cast_time: 0.0 }    // 消耗100mp，詠唱0秒
     ];
 
     const jutsuSelect = document.getElementById("jutsu");
@@ -140,7 +140,7 @@
       const castReduce = parseFloat(castSelect.value);
 
       const originalMp = selected.mana * 100; // 實際MP值
-      const finalMana = Math.max(0, originalMp - (manaReduce * 100));
+      const finalMana = Math.max(100, originalMp - (manaReduce * 100));
       const finalCast = Math.max(0, selected.cast_time - castReduce);
       const cspd = calculateCSPD(selected.cast_time, castReduce);
       const displayName = lang === "zh" ? selected.name : nameMap[selected.name] || selected.name;
