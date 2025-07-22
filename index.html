@@ -7,16 +7,22 @@
     body { font-family: sans-serif; padding: 20px; text-align: center; background-color: lightslategray; }
     label { display: block; margin-top: 10px; }
     select { width: 200px; }
-    #result, #score { margin-top: 20px; font-weight: bold; }
+    #result { margin-top: 20px; font-weight: bold; background: white; padding: 15px; border-radius: 10px; }
   </style>
 </head>
 <body>
-  <h2>忍術施放計算器</h2>
+  <h2 id="title">忍術施放計算器</h2>
 
-  <label for="jutsu">選擇忍術：</label>
+  <label for="langSelect">語言 / Language:</label>
+  <select id="langSelect">
+    <option value="zh">繁體中文</option>
+    <option value="en">English</option>
+  </select>
+
+  <label id="jutsuLabel" for="jutsu">選擇忍術：</label>
   <select id="jutsu"></select>
 
-  <label for="manaReduction">卷軸減免耗魔（0~3）：</label>
+  <label id="manaLabel" for="manaReduction">卷軸減免耗魔（0~3）：</label>
   <select id="manaReduction">
     <option value="0">0</option>
     <option value="1">1</option>
@@ -24,40 +30,80 @@
     <option value="3">3</option>
   </select>
 
-  <label for="castReduction">卷軸減免詠唱時間（0~1.5）：</label>
+  <label id="castLabel" for="castReduction">卷軸減免詠唱時間（0~1.5）：</label>
   <select id="castReduction"></select>
 
   <div id="result">請選擇忍術與減免卷軸</div>
-  <div id="score"></div>
 
   <script>
-    // 忍術資料
+    let lang = "zh";
+
+    const i18n = {
+      zh: {
+        title: "忍術施放計算器",
+        jutsuLabel: "選擇忍術：",
+        manaLabel: "卷軸減免耗魔（0~3）：",
+        castLabel: "卷軸減免詠唱時間（0~3.0）：",
+        result: (name, originalMp, finalMp, originalCast, finalCast, cspd) => 
+          `技能：${name}<br/>` +
+          `原始消耗：${originalMp}mp → 實際消耗：${finalMp}mp<br/>` +
+          `原始詠唱：${originalCast}秒 → 實際詠唱：${finalCast}秒<br/>` +
+          `瞬發所需CSPD：${cspd}`
+      },
+      en: {
+        title: "Ninjutsu Cast Calculator",
+        jutsuLabel: "Choose a Jutsu:",
+        manaLabel: "MP Reduction (0~3):",
+        castLabel: "Cast Time Reduction (0~3.0):",
+        result: (name, originalMp, finalMp, originalCast, finalCast, cspd) => 
+          `Skill: ${name}<br/>` +
+          `Original MP: ${originalMp} → Final MP: ${finalMp}<br/>` +
+          `Original Cast: ${originalCast}s → Final Cast: ${finalCast}s<br/>` +
+          `CSPD for Instant Cast: ${cspd}`
+      }
+    };
+
+    const nameMap = {
+      "火遁術": "Fire Release",
+      "雷遁術": "Thunder Release",
+      "風遁術": "Wind Release",
+      "水遁術": "Water Release",
+      "土遁術": "Earth Release",
+      "分身術": "Clone Technique",
+      "風魔手里劍": "Demon Wind Shuriken",
+      "苦無飛鏢": "Kunai Throw"
+    };
+
+    // 根據參考資料的忍術數據（mp以百為單位儲存，實際顯示*100）
     const ninjutsuList = [
-      { name: "火遁術", mana: 6, cast_time: 3.0 },
-      { name: "雷遁術", mana: 6, cast_time: 2.0 },
-      { name: "風遁術", mana: 5, cast_time: 1.0 },
-      { name: "水遁術", mana: 7, cast_time: 2.5 },
-      { name: "土遁術", mana: 6, cast_time: 3.0 },
-      { name: "分身術", mana: 6, cast_time: 3.0 },
-      { name:"風魔手里劍", mana:5, cast_time: 1.0},
-      { name:"苦無飛鏢", mana: 3, cast_time: 0.0}
+      { name: "火遁術", mana: 6, cast_time: 3.0 },     // 消耗600mp，詠唱3秒
+      { name: "雷遁術", mana: 6, cast_time: 2.0 },     // 估計600mp，詠唱2秒
+      { name: "風遁術", mana: 5, cast_time: 1.0 },     // 消耗500mp，詠唱1秒
+      { name: "水遁術", mana: 7, cast_time: 2.5 },     // 估計700mp，詠唱2.5秒
+      { name: "土遁術", mana: 6, cast_time: 3.0 },     // 估計600mp，詠唱3秒
+      { name: "分身術", mana: 6, cast_time: 3.0 },     // 消耗600mp，詠唱3秒
+      { name: "風魔手里劍", mana: 5, cast_time: 1.0 }, // 估計500mp，詠唱1秒
+      { name: "苦無飛鏢", mana: 1, cast_time: 0.0 }    // 消耗100mp，詠唱0秒
     ];
 
     const jutsuSelect = document.getElementById("jutsu");
     const manaSelect = document.getElementById("manaReduction");
     const castSelect = document.getElementById("castReduction");
     const result = document.getElementById("result");
-    const score = document.getElementById("score");
+    const langSelect = document.getElementById("langSelect");
 
-    // 產生忍術選單
-    ninjutsuList.forEach((jutsu, index) => {
-      const option = document.createElement("option");
-      option.value = index;
-      option.textContent = `${jutsu.name}`;
-      jutsuSelect.appendChild(option);
-    });
+    // 初始化忍術選單
+    function renderJutsuOptions() {
+      jutsuSelect.innerHTML = "";
+      ninjutsuList.forEach((jutsu, index) => {
+        const option = document.createElement("option");
+        option.value = index;
+        option.textContent = lang === "zh" ? jutsu.name : nameMap[jutsu.name] || jutsu.name;
+        jutsuSelect.appendChild(option);
+      });
+    }
 
-    // 產生詠唱減免選單 (0~1.5 每 0.1)
+    // 初始化詠唱減免選單 (0~1.5 每 0.1)
     for (let i = 0; i <= 15; i++) {
       const value = (i / 10).toFixed(1);
       const option = document.createElement("option");
@@ -66,31 +112,68 @@
       castSelect.appendChild(option);
     }
 
-    // 計算所需CSPD
-    function calculateScore(originalTime, reducedTime) {
-      if (originalTime <= 0) return 0;
-      const percent = (1 - reducedTime / originalTime) * 100;
-      return percent < 50
-        ? (50 - percent) * 180 + 1000
-        : percent * 20;
+    // 根據參考數據推導的CSPD計算公式
+    function calculateCSPD(originalCast, castReduction) {
+      // 計算扣除卷軸減免後的剩餘詠唱時間
+      const remainingTime = Math.max(0, originalCast - castReduction);
+      
+      // 如果沒有剩餘詠唱時間，不需要CSPD
+      if (remainingTime <= 0 || originalCast <= 0) return 0;
+      
+      // 計算剩餘詠唱時間佔原始時間的百分比
+      const remainingPercent = (remainingTime / originalCast) * 100;
+      
+      // 根據參考數據：50%=1000, 100%=10000
+      if (remainingPercent > 50) {
+        // 剩餘>50%：1000 + (百分比-50) * 180
+        return Math.round(1000 + (remainingPercent - 50) * 180);
+      } 
+      else {
+        // 剩餘≤50%：百分比 * 20
+        return Math.round(remainingPercent * 20);
+      }
     }
 
-    // 主邏輯：更新結果與分數
     function updateResult() {
       const selected = ninjutsuList[jutsuSelect.value];
       const manaReduce = parseInt(manaSelect.value);
       const castReduce = parseFloat(castSelect.value);
 
-      const finalMana = Math.max(0, selected.mana - manaReduce);
+      const originalMp = selected.mana * 100; // 實際MP值
+      const finalMana = Math.max(0, originalMp - (manaReduce * 100));
       const finalCast = Math.max(0, selected.cast_time - castReduce);
-      const calcScore = calculateScore(selected.cast_time, finalCast);
+      const cspd = calculateCSPD(selected.cast_time, castReduce);
+      const displayName = lang === "zh" ? selected.name : nameMap[selected.name] || selected.name;
 
-      result.textContent = `你選擇了「${selected.name}」，實際耗魔為 ${finalMana}，瞬發最低CSPD ：${calcScore.toFixed(0)}`;
+      result.innerHTML = i18n[lang].result(
+        displayName, 
+        originalMp, 
+        finalMana, 
+        selected.cast_time.toFixed(1), 
+        finalCast.toFixed(1), 
+        cspd
+      );
     }
 
+    function updateLanguage(selectedLang) {
+      lang = selectedLang;
+      document.title = i18n[lang].title;
+      document.getElementById("title").textContent = i18n[lang].title;
+      document.getElementById("jutsuLabel").textContent = i18n[lang].jutsuLabel;
+      document.getElementById("manaLabel").textContent = i18n[lang].manaLabel;
+      document.getElementById("castLabel").textContent = i18n[lang].castLabel;
+      renderJutsuOptions();
+      updateResult();
+    }
+
+    // 綁定事件
     jutsuSelect.addEventListener("change", updateResult);
     manaSelect.addEventListener("change", updateResult);
     castSelect.addEventListener("change", updateResult);
+    langSelect.addEventListener("change", (e) => updateLanguage(e.target.value));
+
+    // 預設渲染
+    renderJutsuOptions();
     updateResult();
   </script>
 </body>
